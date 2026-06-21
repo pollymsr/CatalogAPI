@@ -12,7 +12,33 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
+        Scheme = "Bearer",
+        BearerFormat = "JWT",
+        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        Description = "Insira o token JWT no formato: Bearer {seu_token}"
+    });
+
+    c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+    {
+        {
+            new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+            {
+                Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                {
+                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
+});
 
 builder.Services.AddDbContext<CatalogDbContext>(options =>
     options.UseSqlite("Data Source=catalog.db"));
@@ -36,7 +62,7 @@ builder.Services.AddMassTransit(x =>
     });
 });
 
-var key = Encoding.ASCII.GetBytes("UmaChaveSecretaMuitoLongaParaOTokenJWT12345!");
+var key = Encoding.ASCII.GetBytes("c6b5cbdc128daa0d2cd2726eacaae1266f8c8ee24fffd3e3f2bac1302b55069f");
 builder.Services.AddAuthentication(x =>
 {
     x.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -50,8 +76,10 @@ builder.Services.AddAuthentication(x =>
     {
         ValidateIssuerSigningKey = true,
         IssuerSigningKey = new SymmetricSecurityKey(key),
-        ValidateIssuer = false,
-        ValidateAudience = false
+        ValidateIssuer = true,
+        ValidIssuer = "FiapCloudGames",
+        ValidateAudience = true,
+        ValidAudience = "FiapCloudGamesUsers"
     };
 });
 
@@ -78,6 +106,17 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<CatalogDbContext>();
     db.Database.EnsureCreated();
+
+    // Semeando os jogos caso o banco esteja vazio
+    if (!db.Games.Any())
+    {
+        db.Games.AddRange(
+            new CatalogAPI.Entities.Game { Id = Guid.NewGuid(), Title = "Elden Ring: Shadow of the Erdtree", Description = "A épica expansão...", Price = 199.90m, Genre = "Action RPG", ReleaseDate = new DateTime(2024, 6, 21).ToUniversalTime() },
+            new CatalogAPI.Entities.Game { Id = Guid.NewGuid(), Title = "Black Myth: Wukong", Description = "RPG de ação focado em mitologia...", Price = 249.99m, Genre = "Action RPG", ReleaseDate = new DateTime(2024, 8, 20).ToUniversalTime() },
+            new CatalogAPI.Entities.Game { Id = Guid.NewGuid(), Title = "Senua's Saga: Hellblade II", Description = "Jornada brutal de sobrevivência...", Price = 229.00m, Genre = "Action Adventure", ReleaseDate = new DateTime(2024, 5, 21).ToUniversalTime() }
+        );
+        db.SaveChanges();
+    }
 }
 
 app.Run();
