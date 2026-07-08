@@ -9,7 +9,6 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
@@ -99,7 +98,6 @@ builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -117,13 +115,11 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-// Ensure DB is created
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<CatalogDbContext>();
     db.Database.EnsureCreated();
 
-    // Semeando os jogos caso o banco esteja vazio
     if (!db.Games.Any())
     {
         db.Games.AddRange(
