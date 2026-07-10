@@ -13,10 +13,8 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("CatalogAPI")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+d98dcd9a3ef36af88ba53416879f705531f14f86")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+8577b2e7072370c88b65927b3d8489426ea9b0f8")]
 [assembly: System.Reflection.AssemblyProductAttribute("CatalogAPI")]
 [assembly: System.Reflection.AssemblyTitleAttribute("CatalogAPI")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
-
-// Gerado pela classe WriteCodeFragment do MSBuild.
 
