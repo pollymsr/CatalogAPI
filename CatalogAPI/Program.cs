@@ -7,6 +7,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 
+using MongoDB.Driver;
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
@@ -39,8 +41,13 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-builder.Services.AddDbContext<CatalogDbContext>(options =>
-    options.UseSqlite("Data Source=catalog.db"));
+builder.Services.AddSingleton<CatalogMongoContext>();
+
+var redisConn = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
+builder.Services.AddStackExchangeRedisCache(options =>
+{
+    options.Configuration = redisConn;
+});
 
 builder.Services.AddScoped<IGameService, GameService>();
 builder.Services.AddScoped<IPromotionService, PromotionService>();
@@ -67,8 +74,8 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowAll", policy =>
     {
         policy.AllowAnyOrigin()
-              .AllowAnyMethod()
-              .AllowAnyHeader();
+               .AllowAnyMethod()
+               .AllowAnyHeader();
     });
 });
 
@@ -115,19 +122,20 @@ app.UseAuthorization();
 
 app.MapControllers();
 
+// Seeder MongoDB
 using (var scope = app.Services.CreateScope())
 {
-    var db = scope.ServiceProvider.GetRequiredService<CatalogDbContext>();
-    db.Database.EnsureCreated();
-
-    if (!db.Games.Any())
+    var mongoContext = scope.ServiceProvider.GetRequiredService<CatalogMongoContext>();
+    var gamesCount = mongoContext.Games.CountDocuments(FilterDefinition<CatalogAPI.Entities.Game>.Empty);
+    if (gamesCount == 0)
     {
-        db.Games.AddRange(
+        var seedGames = new List<CatalogAPI.Entities.Game>
+        {
             new CatalogAPI.Entities.Game { Id = Guid.NewGuid(), Title = "Elden Ring: Shadow of the Erdtree", Description = "A épica expansão...", Price = 199.90m, Genre = "Action RPG", ReleaseDate = new DateTime(2024, 6, 21).ToUniversalTime() },
             new CatalogAPI.Entities.Game { Id = Guid.NewGuid(), Title = "Black Myth: Wukong", Description = "RPG de ação focado em mitologia...", Price = 249.99m, Genre = "Action RPG", ReleaseDate = new DateTime(2024, 8, 20).ToUniversalTime() },
             new CatalogAPI.Entities.Game { Id = Guid.NewGuid(), Title = "Senua's Saga: Hellblade II", Description = "Jornada brutal de sobrevivência...", Price = 229.00m, Genre = "Action Adventure", ReleaseDate = new DateTime(2024, 5, 21).ToUniversalTime() }
-        );
-        db.SaveChanges();
+        };
+        mongoContext.Games.InsertMany(seedGames);
     }
 }
 

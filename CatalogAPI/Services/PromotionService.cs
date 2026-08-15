@@ -4,22 +4,22 @@ using System.Threading.Tasks;
 using CatalogAPI.Data;
 using CatalogAPI.DTOs;
 using CatalogAPI.Entities;
-using Microsoft.EntityFrameworkCore;
+using MongoDB.Driver;
 
 namespace CatalogAPI.Services;
 
 public class PromotionService : IPromotionService
 {
-    private readonly CatalogDbContext _context;
+    private readonly CatalogMongoContext _context;
 
-    public PromotionService(CatalogDbContext context)
+    public PromotionService(CatalogMongoContext context)
     {
         _context = context;
     }
 
     public async Task<Promotion> CreateAsync(CreatePromotionDto dto)
     {
-        var existingPromotion = await _context.Promotions.FirstOrDefaultAsync(p => p.Code == dto.Code.ToUpper().Trim());
+        var existingPromotion = await _context.Promotions.Find(p => p.Code == dto.Code.ToUpper().Trim()).FirstOrDefaultAsync();
         if (existingPromotion != null)
             throw new InvalidOperationException("Já existe uma promoção com este código.");
 
@@ -37,50 +37,42 @@ public class PromotionService : IPromotionService
             CreatedAt = DateTime.UtcNow
         };
 
-        _context.Promotions.Add(promotion);
-        await _context.SaveChangesAsync();
+        await _context.Promotions.InsertOneAsync(promotion);
         return promotion;
     }
 
     public async Task<Promotion?> UpdateAsync(Guid id, UpdatePromotionDto dto)
     {
-        var promotion = await _context.Promotions.FindAsync(id);
-        if (promotion == null)
-            return null;
+        var update = Builders<Promotion>.Update
+            .Set(p => p.Description, dto.Description.Trim())
+            .Set(p => p.DiscountPercentage, dto.DiscountPercentage)
+            .Set(p => p.StartDate, dto.StartDate)
+            .Set(p => p.EndDate, dto.EndDate)
+            .Set(p => p.IsActive, dto.IsActive)
+            .Set(p => p.MaxUses, dto.MaxUses);
 
-        promotion.Description = dto.Description.Trim();
-        promotion.DiscountPercentage = dto.DiscountPercentage;
-        promotion.StartDate = dto.StartDate;
-        promotion.EndDate = dto.EndDate;
-        promotion.IsActive = dto.IsActive;
-        promotion.MaxUses = dto.MaxUses;
-
-        await _context.SaveChangesAsync();
-        return promotion;
+        var options = new FindOneAndUpdateOptions<Promotion> { ReturnDocument = ReturnDocument.After };
+        return await _context.Promotions.FindOneAndUpdateAsync(p => p.Id == id, update, options);
     }
 
     public async Task<bool> DeleteAsync(Guid id)
     {
-        var promotion = await _context.Promotions.FindAsync(id);
-        if (promotion == null)
-            return false;
-
-        _context.Promotions.Remove(promotion);
-        return await _context.SaveChangesAsync() > 0;
+        var result = await _context.Promotions.DeleteOneAsync(p => p.Id == id);
+        return result.DeletedCount > 0;
     }
 
     public async Task<List<Promotion>> GetAllAsync()
     {
-        return await _context.Promotions.ToListAsync();
+        return await _context.Promotions.Find(_ => true).ToListAsync();
     }
 
     public async Task<Promotion?> GetByIdAsync(Guid id)
     {
-        return await _context.Promotions.FindAsync(id);
+        return await _context.Promotions.Find(p => p.Id == id).FirstOrDefaultAsync();
     }
 
     public async Task<Promotion?> GetByCodeAsync(string code)
     {
-        return await _context.Promotions.FirstOrDefaultAsync(p => p.Code == code.ToUpper().Trim());
+        return await _context.Promotions.Find(p => p.Code == code.ToUpper().Trim()).FirstOrDefaultAsync();
     }
 }
