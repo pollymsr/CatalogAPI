@@ -51,6 +51,10 @@
         "net8.0": {
           "targetAlias": "net8.0",
           "dependencies": {
+            "MassTransit.AmazonSQS": {
+              "target": "Package",
+              "version": "[9.2.0, )"
+            },
             "MassTransit.RabbitMQ": {
               "target": "Package",
               "version": "[8.3.3, )"

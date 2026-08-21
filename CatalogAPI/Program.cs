@@ -69,13 +69,11 @@ builder.Services.AddMassTransit(x =>
 {
     x.AddConsumer<PaymentProcessedEventConsumer>();
 
-    x.UsingRabbitMq((context, cfg) =>
+    x.UsingAmazonSqs((context, cfg) =>
     {
-        var rabbitHost = builder.Configuration["RabbitMQ:Host"] ?? "localhost";
-        cfg.Host(rabbitHost, "/", h =>
+        cfg.Host("us-east-1", h =>
         {
-            h.Username("guest");
-            h.Password("guest");
+            // Pega as credenciais automaticamente do perfil AWS local
         });
 
         cfg.ConfigureEndpoints(context);
