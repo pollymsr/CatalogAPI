@@ -10,6 +10,12 @@ using System.Text;
 using MongoDB.Driver;
 using OpenTelemetry.Metrics;
 
+using MongoDB.Bson;
+using MongoDB.Bson.Serialization;
+using MongoDB.Bson.Serialization.Serializers;
+
+BsonSerializer.RegisterSerializer(new GuidSerializer(GuidRepresentation.Standard));
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddOpenTelemetry()
@@ -69,11 +75,13 @@ builder.Services.AddMassTransit(x =>
 {
     x.AddConsumer<PaymentProcessedEventConsumer>();
 
-    x.UsingAmazonSqs((context, cfg) =>
+    x.UsingRabbitMq((context, cfg) =>
     {
-        cfg.Host("us-east-1", h =>
+        var rabbitHost = builder.Configuration["RabbitMQ:Host"] ?? "localhost";
+        cfg.Host(rabbitHost, "/", h =>
         {
-            // Pega as credenciais automaticamente do perfil AWS local
+            h.Username("guest");
+            h.Password("guest");
         });
 
         cfg.ConfigureEndpoints(context);
